@@ -10,9 +10,9 @@
 
 #define M_PI 3.14159265358979323846
 // Global Variables
-float playerX = 0.0f, playerY = 1.0f, playerZ = 8.0f;
+float playerX = 0.0f, playerY = 0.0f, playerZ = 8.0f;
 float playerRotation = 0.0f;
-bool isMoving = true;
+bool isMoving = false;
 float shootingPower = 1.0f;
 bool isPowerCharging = false;
 const float MAX_POWER = 2.0f;
@@ -23,6 +23,13 @@ int cameraView = 0; // 0: Free, 1: Top, 2: Side, 3: Front
 float cameraSpeed = 0.5f;
 float cameraRotationX = 0.0f;
 float cameraRotationY = 0.0f;
+
+bool mouseRotating = false;
+int lastMouseX = 0;
+int lastMouseY = 0;
+float mouseSensitivity = 0.2f;
+float yaw = 0.0f;   // Left/right rotation
+float pitch = 0.0f;  // Up/down rotation
 
 bool gameWon = false;
 bool gameLost = false;
@@ -66,8 +73,18 @@ struct Arrow {
     bool active;         // Is arrow currently flying?
     float speed;         // Arrow speed
 };
-
 std::vector<Arrow> arrows;  // Store multiple arrows
+
+const int NUM_AUDIENCE = 100;  // Number of audience members
+struct AudienceMember {
+    float x, z;              // Position
+    float baseY;            // Base height for bobbing animation
+    float animationOffset;  // Individual animation timing offset
+    float scale;           // Individual size variation
+    float rotation;        // Rotation angle
+    int colorVariation;    // Color variation for clothes
+};
+std::vector<AudienceMember> audience;
 
 
 
@@ -79,6 +96,7 @@ void playSound(const char* filename, bool loop);
 void drawPlayer();
 void updatePlayerAnimations();
 void drawDisk(float outerRadius, float height, int slices);
+void drawGoldCup();
 void drawTarget();
 void drawArrow();
 void drawWalls();
@@ -88,6 +106,8 @@ void drawBench();
 void drawFlag();
 void drawLight();
 void drawBanner();
+void drawAudienceMember(const AudienceMember& member, float animationTime);
+void drawAudience();
 void drawText(float x, float y, std::string text);
 void glutSolidCylinder(GLdouble radius, GLdouble height, GLint slices, GLint stacks);
 void checkCollisions();
@@ -96,11 +116,14 @@ void updateArrows();
 void drawGameEndScreen();
 void reshape(int w, int h);
 void init();
+void initAudience();
 void updateLights();
 void display();
 void keyboard(unsigned char key, int x, int y);
 void specialKeys(int key, int x, int y);
 void keyboardUp(unsigned char key, int x, int y);
+void mouse(int button, int state, int x, int y);
+void mouseMotion(int x, int y);
 void timer(int value);
 
 
@@ -217,425 +240,242 @@ void drawPlayer() {
     glTranslatef(playerX, playerY, playerZ);
     glRotatef(playerRotation, 0.0f, 1.0f, 0.0f);
 
-    // Enhanced material properties for realistic skin
+    // Material properties
     GLfloat skin_ambient[] = { 0.4f, 0.3f, 0.25f, 1.0f };
     GLfloat skin_diffuse[] = { 0.8f, 0.65f, 0.55f, 1.0f };
     GLfloat skin_specular[] = { 0.2f, 0.2f, 0.2f, 1.0f };
     GLfloat skin_shininess = 20.0f;
 
-    // Enhanced material properties for uniform
-    GLfloat uniform_ambient[] = { 0.05f, 0.05f, 0.15f, 1.0f };
-    GLfloat uniform_diffuse[] = { 0.1f, 0.1f, 0.4f, 1.0f };
-    GLfloat uniform_specular[] = { 0.3f, 0.3f, 0.3f, 1.0f };
-    GLfloat uniform_shininess = 50.0f;
+    // Fancy athletic shirt material (shiny sports fabric)
+    GLfloat shirt_ambient[] = { 0.1f, 0.1f, 0.3f, 1.0f };
+    GLfloat shirt_diffuse[] = { 0.2f, 0.2f, 0.8f, 1.0f };
+    GLfloat shirt_specular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+    GLfloat shirt_shininess = 80.0f;
 
-    // Body - More athletic proportions
-    glMaterialfv(GL_FRONT, GL_AMBIENT, uniform_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, uniform_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, uniform_specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, uniform_shininess);
-
-    // Torso with better proportions
-    glColor3f(0.1f, 0.1f, 0.4f); // Darker Olympic blue
-    glPushMatrix();
-    glScalef(0.35f, 0.5f, 0.25f); // Slimmer, more athletic build
-    glutSolidCube(1.0f);
-    glPopMatrix();
-
-    // Olympic logo with more detail
-    glPushMatrix();
-    glTranslatef(0.0f, 0.1f, 0.127f);
-
-    // Draw Olympic rings
-    float ringColors[5][3] = {
-        {0.0f, 0.0f, 0.8f},  // Blue
-        {0.0f, 0.0f, 0.0f},  // Black
-        {1.0f, 0.0f, 0.0f},  // Red
-        {1.0f, 1.0f, 0.0f},  // Yellow
-        {0.0f, 0.8f, 0.0f}   // Green
-    };
-
-    float ringOffsets[5][2] = {
-        {-0.04f, 0.02f},
-        {0.0f, 0.02f},
-        {0.04f, 0.02f},
-        {-0.02f, 0.0f},
-        {0.02f, 0.0f}
-    };
-
-    for (int i = 0; i < 5; i++) {
-        glPushMatrix();
-        glTranslatef(ringOffsets[i][0], ringOffsets[i][1], 0.0f);
-        glColor3f(ringColors[i][0], ringColors[i][1], ringColors[i][2]);
-        glutSolidTorus(0.005f, 0.015f, 8, 16);
-        glPopMatrix();
-    }
-    glPopMatrix();
-
-    // Enhanced head with better features
-    // Neck with better shape
+    // Head and Face
     glMaterialfv(GL_FRONT, GL_AMBIENT, skin_ambient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, skin_diffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, skin_specular);
     glMaterialf(GL_FRONT, GL_SHININESS, skin_shininess);
 
+    // Head
+    glPushMatrix();
+    glTranslatef(0.0f, 1.6f, 0.0f);
     glColor3f(0.8f, 0.65f, 0.55f);
+    glutSolidSphere(0.15f, 16, 16);
+
+    // Hair with style
+    glColor3f(0.1f, 0.05f, 0.0f);
     glPushMatrix();
-    glTranslatef(0.0f, 0.35f, 0.0f);
-    glScalef(0.08f, 0.12f, 0.08f);
-    glutSolidCylinder(1.0, 1.0, 10, 10);
-    glPopMatrix();
-
-    // Face with better shape
+    glTranslatef(0.0f, 0.08f, 0.0f);
+    // Base hair
     glPushMatrix();
-    glTranslatef(0.0f, 0.5f, 0.0f);
-    // Base head shape
-    glScalef(1.0f, 1.15f, 0.9f); // Slightly oval shape
-    glutSolidSphere(0.15f, 32, 32);
-    glPopMatrix();
-
-    // Enhanced eyes with depth and detail
-    // Left Eye Socket
-    glColor3f(0.75f, 0.6f, 0.5f);
-    glPushMatrix();
-    glTranslatef(-0.05f, 0.52f, 0.13f);
-    glRotatef(15.0f, 0.0f, 1.0f, 0.0f);
-    glScalef(0.05f, 0.03f, 0.02f);
-    glutSolidSphere(1.0f, 16, 16);
-    glPopMatrix();
-
-    // Left Eye
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glPushMatrix();
-    glTranslatef(-0.05f, 0.52f, 0.14f);
-    glScalef(0.035f, 0.035f, 0.015f);
-    glutSolidSphere(1.0f, 16, 16);
-
-    // Left Iris
-    glColor3f(0.3f, 0.5f, 0.8f); // Blue eyes
-    glTranslatef(0.0f, 0.0f, 0.5f);
-    glScalef(0.7f, 0.7f, 0.3f);
-    glutSolidSphere(1.0f, 16, 16);
-
-    // Left Pupil
-    glColor3f(0.0f, 0.0f, 0.0f);
-    glTranslatef(0.0f, 0.0f, 0.5f);
-    glScalef(0.4f, 0.4f, 0.3f);
-    glutSolidSphere(1.0f, 12, 12);
-    glPopMatrix();
-
-    // Right Eye Socket
-    glColor3f(0.75f, 0.6f, 0.5f);
-    glPushMatrix();
-    glTranslatef(0.05f, 0.52f, 0.13f);
-    glRotatef(-15.0f, 0.0f, 1.0f, 0.0f);
-    glScalef(0.05f, 0.03f, 0.02f);
-    glutSolidSphere(1.0f, 16, 16);
-    glPopMatrix();
-
-    // Right Eye (mirror of left eye)
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glPushMatrix();
-    glTranslatef(0.05f, 0.52f, 0.14f);
-    glScalef(0.035f, 0.035f, 0.015f);
-    glutSolidSphere(1.0f, 16, 16);
-
-    // Right Iris
-    glColor3f(0.3f, 0.5f, 0.8f);
-    glTranslatef(0.0f, 0.0f, 0.5f);
-    glScalef(0.7f, 0.7f, 0.3f);
-    glutSolidSphere(1.0f, 16, 16);
-
-    // Right Pupil
-    glColor3f(0.0f, 0.0f, 0.0f);
-    glTranslatef(0.0f, 0.0f, 0.5f);
-    glScalef(0.4f, 0.4f, 0.3f);
-    glutSolidSphere(1.0f, 12, 12);
-    glPopMatrix();
-
-    // Enhanced eyebrows
-    glColor3f(0.15f, 0.1f, 0.05f);
-    // Left Eyebrow
-    glPushMatrix();
-    glTranslatef(-0.05f, 0.56f, 0.15f);
-    glRotatef(15.0f, 0.0f, 0.0f, 1.0f);
-    glRotatef(-10.0f, 1.0f, 0.0f, 0.0f);
-    glScalef(0.06f, 0.01f, 0.01f);
-    glutSolidCube(1.0f);
-    glPopMatrix();
-
-    // Right Eyebrow
-    glPushMatrix();
-    glTranslatef(0.05f, 0.56f, 0.15f);
-    glRotatef(-15.0f, 0.0f, 0.0f, 1.0f);
-    glRotatef(-10.0f, 1.0f, 0.0f, 0.0f);
-    glScalef(0.06f, 0.01f, 0.01f);
-    glutSolidCube(1.0f);
-    glPopMatrix();
-
-    // Enhanced hair with layers
-    glColor3f(0.15f, 0.1f, 0.05f);
-    // Base hair layer
-    glPushMatrix();
-    glTranslatef(0.0f, 0.58f, 0.0f);
     glScalef(0.17f, 0.1f, 0.17f);
     glutSolidCube(1.0f);
     glPopMatrix();
 
-    // Hair details (multiple layers)
-    for (int i = 0; i < 3; i++) {
+    // Hair strands
+    for (int i = 0; i < 8; i++) {
         glPushMatrix();
-        glTranslatef(0.0f, 0.58f + i * 0.02f, 0.0f);
         glRotatef(45.0f * i, 0.0f, 1.0f, 0.0f);
-        glScalef(0.16f - i * 0.02f, 0.05f, 0.16f - i * 0.02f);
-        glutSolidCube(1.0f);
-        glPopMatrix();
-    }
-
-    // Enhanced arms with better musculature
-    glMaterialfv(GL_FRONT, GL_AMBIENT, uniform_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, uniform_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, uniform_specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, uniform_shininess);
-
-    float armSwing = isMoving ? sin(armAnimation) * 25.0f : 0.0f;
-
-    // Left arm with muscle definition
-    glPushMatrix();
-    glTranslatef(-0.25f, 0.25f, 0.0f);
-    glRotatef(45.0f + armSwing, 0.0f, 0.0f, 1.0f);
-
-    // Upper arm with bicep
-    glColor3f(0.1f, 0.1f, 0.4f);
-    glPushMatrix();
-    glScalef(0.1f, 0.3f, 0.12f);
-    glutSolidCube(1.0f);
-    // Bicep detail
-    glTranslatef(0.0f, 0.0f, 0.5f);
-    glScalef(1.0f, 0.8f, 0.3f);
-    glutSolidSphere(0.5f, 16, 16);
-    glPopMatrix();
-
-    // Lower arm with forearm muscles
-    glMaterialfv(GL_FRONT, GL_AMBIENT, skin_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, skin_diffuse);
-    glColor3f(0.8f, 0.65f, 0.55f);
-    glTranslatef(0.0f, -0.3f, 0.0f);
-    glRotatef(isPowerCharging ? -45.0f : 0.0f, 1.0f, 0.0f, 0.0f);
-    glPushMatrix();
-    glScalef(0.08f, 0.25f, 0.09f);
-    glutSolidCube(1.0f);
-    glPopMatrix();
-    glPopMatrix();
-
-    // Right arm (bow arm)
-    glPushMatrix();
-    glTranslatef(0.25f, 0.25f, 0.0f);
-    glRotatef(-45.0f - armSwing, 0.0f, 0.0f, 1.0f);
-
-    // Upper arm with bicep
-    glMaterialfv(GL_FRONT, GL_AMBIENT, uniform_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, uniform_diffuse);
-    glColor3f(0.1f, 0.1f, 0.4f);
-    glPushMatrix();
-    glScalef(0.1f, 0.3f, 0.12f);
-    glutSolidCube(1.0f);
-    // Bicep detail
-    glTranslatef(0.0f, 0.0f, 0.5f);
-    glScalef(1.0f, 0.8f, 0.3f);
-    glutSolidSphere(0.5f, 16, 16);
-    glPopMatrix();
-
-    // Lower arm with forearm
-    glMaterialfv(GL_FRONT, GL_AMBIENT, skin_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, skin_diffuse);
-    glColor3f(0.8f, 0.65f, 0.55f);
-    glTranslatef(0.0f, -0.3f, 0.0f);
-    glRotatef(isPowerCharging ? 90.0f : 0.0f, 1.0f, 0.0f, 0.0f);
-    glPushMatrix();
-    glScalef(0.08f, 0.25f, 0.09f);
-    glutSolidCube(1.0f);
-    glPopMatrix();
-    glPopMatrix();
-
-    // Enhanced legs with better proportions and muscle definition
-    float legSwing = isMoving ? sin(legAnimation) * 20.0f : 0.0f;
-
-    // Set material for pants
-    GLfloat pants_ambient[] = { 0.15f, 0.15f, 0.15f, 1.0f };
-    GLfloat pants_diffuse[] = { 0.9f, 0.9f, 0.9f, 1.0f };
-    GLfloat pants_specular[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-    GLfloat pants_shininess = 30.0f;
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT, pants_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, pants_diffuse);
-	glMaterialfv(GL_FRONT, GL_SPECULAR, pants_specular);
-
-    // Continuing from the legs setup...
-
-    // Left leg with enhanced musculature
-    glColor3f(1.0f, 1.0f, 1.0f); // White pants
-    glPushMatrix();
-    glTranslatef(-0.15f, -0.3f, 0.0f);
-    glRotatef(legSwing, 1.0f, 0.0f, 0.0f);
-
-    // Upper left leg with quad muscle definition
-    glPushMatrix();
-    glScalef(0.13f, 0.3f, 0.15f);
-    glutSolidCube(1.0f);
-    // Quad muscle detail
-    glColor3f(0.95f, 0.95f, 0.95f);
-    glTranslatef(0.0f, 0.0f, 0.3f);
-    glScalef(0.9f, 0.8f, 0.3f);
-    glutSolidSphere(0.5f, 16, 16);
-    glPopMatrix();
-
-    // Lower left leg with calf definition
-    glTranslatef(0.0f, -0.3f, 0.0f);
-    glRotatef(isMoving ? abs(sin(legAnimation) * 25.0f) : 0.0f, 1.0f, 0.0f, 0.0f);
-
-    // Main calf muscle
-    glPushMatrix();
-    glScalef(0.11f, 0.3f, 0.13f);
-    glutSolidCube(1.0f);
-    // Calf muscle detail
-    glTranslatef(0.0f, -0.2f, 0.4f);
-    glScalef(0.9f, 0.6f, 0.4f);
-    glutSolidSphere(0.5f, 16, 16);
-    glPopMatrix();
-
-    // Enhanced athletic shoe
-    glPushMatrix();
-    // Shoe base
-    glTranslatef(0.0f, -0.18f, 0.02f);
-    glColor3f(0.2f, 0.2f, 0.2f);
-    glScalef(0.12f, 0.06f, 0.18f);
-    glutSolidCube(1.0f);
-
-    // Shoe details
-    glColor3f(0.8f, 0.8f, 0.8f);
-    glTranslatef(0.0f, 0.5f, 0.2f);
-    glScalef(0.9f, 0.8f, 0.5f);
-    glutSolidCube(1.0f);
-
-    // Shoe laces
-    glColor3f(1.0f, 1.0f, 1.0f);
-    for (int i = 0; i < 3; i++) {
-        glPushMatrix();
-        glTranslatef(0.0f, 0.5f + i * 0.3f, 0.6f);
-        glScalef(0.8f, 0.1f, 0.1f);
+        glTranslatef(0.08f, 0.0f, 0.0f);
+        glScalef(0.1f, 0.05f, 0.02f);
         glutSolidCube(1.0f);
         glPopMatrix();
     }
     glPopMatrix();
+
+    // Eyes with expression
+    glColor3f(1.0f, 1.0f, 1.0f);
+    // Left eye
+    glPushMatrix();
+    glTranslatef(-0.05f, 0.0f, 0.12f);
+    glutSolidSphere(0.025f, 8, 8);
+    // Iris
+    glColor3f(0.2f, 0.4f, 0.8f);
+    glTranslatef(0.0f, 0.0f, 0.01f);
+    glutSolidSphere(0.015f, 8, 8);
+    // Pupil
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glTranslatef(0.0f, 0.0f, 0.005f);
+    glutSolidSphere(0.008f, 8, 8);
     glPopMatrix();
 
-    // Right leg with enhanced musculature
+    // Right eye (similar to left)
     glColor3f(1.0f, 1.0f, 1.0f);
     glPushMatrix();
-    glTranslatef(0.15f, -0.3f, 0.0f);
-    glRotatef(-legSwing, 1.0f, 0.0f, 0.0f);
-
-    // Upper right leg with quad muscle definition
-    glPushMatrix();
-    glScalef(0.13f, 0.3f, 0.15f);
-    glutSolidCube(1.0f);
-    // Quad muscle detail
-    glColor3f(0.95f, 0.95f, 0.95f);
-    glTranslatef(0.0f, 0.0f, 0.3f);
-    glScalef(0.9f, 0.8f, 0.3f);
-    glutSolidSphere(0.5f, 16, 16);
+    glTranslatef(0.05f, 0.0f, 0.12f);
+    glutSolidSphere(0.025f, 8, 8);
+    glColor3f(0.2f, 0.4f, 0.8f);
+    glTranslatef(0.0f, 0.0f, 0.01f);
+    glutSolidSphere(0.015f, 8, 8);
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glTranslatef(0.0f, 0.0f, 0.005f);
+    glutSolidSphere(0.008f, 8, 8);
     glPopMatrix();
 
-    // Lower right leg with calf definition
-    glTranslatef(0.0f, -0.3f, 0.0f);
-    glRotatef(isMoving ? abs(sin(legAnimation + 3.14159f) * 25.0f) : 0.0f, 1.0f, 0.0f, 0.0f);
-
-    // Main calf muscle
+    // Expressive mouth (changes with shooting)
+    glColor3f(0.8f, 0.4f, 0.4f);
     glPushMatrix();
-    glScalef(0.11f, 0.3f, 0.13f);
-    glutSolidCube(1.0f);
-    // Calf muscle detail
-    glTranslatef(0.0f, -0.2f, 0.4f);
-    glScalef(0.9f, 0.6f, 0.4f);
-    glutSolidSphere(0.5f, 16, 16);
-    glPopMatrix();
-
-    // Enhanced athletic shoe (right)
-    glPushMatrix();
-    // Shoe base
-    glTranslatef(0.0f, -0.18f, 0.02f);
-    glColor3f(0.2f, 0.2f, 0.2f);
-    glScalef(0.12f, 0.06f, 0.18f);
-    glutSolidCube(1.0f);
-
-    // Shoe details
-    glColor3f(0.8f, 0.8f, 0.8f);
-    glTranslatef(0.0f, 0.5f, 0.2f);
-    glScalef(0.9f, 0.8f, 0.5f);
-    glutSolidCube(1.0f);
-
-    // Shoe laces
-    glColor3f(1.0f, 1.0f, 1.0f);
-    for (int i = 0; i < 3; i++) {
-        glPushMatrix();
-        glTranslatef(0.0f, 0.5f + i * 0.3f, 0.6f);
-        glScalef(0.8f, 0.1f, 0.1f);
-        glutSolidCube(1.0f);
-        glPopMatrix();
-    }
-    glPopMatrix();
-    glPopMatrix();
-
-    // Add facial features
-    // Nose
-    glColor3f(0.75f, 0.6f, 0.5f);
-    glPushMatrix();
-    glTranslatef(0.0f, 0.52f, 0.15f);
-    glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-    glutSolidCone(0.02f, 0.05f, 8, 8);
-    glPopMatrix();
-
-    // Mouth
-    glColor3f(0.6f, 0.3f, 0.3f);
-    glPushMatrix();
-    glTranslatef(0.0f, 0.45f, 0.14f);
-    glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-    glScalef(1.0f, 0.6f, 1.0f);
+    glTranslatef(0.0f, -0.05f, 0.12f);
     if (isPowerCharging) {
         // Concentrated expression
-        glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
-        glutSolidCone(0.03f, 0.01f, 8, 8);
+        glScalef(0.04f, 0.01f, 0.02f);
+        glutSolidCube(1.0f);
     }
     else {
-        // Normal expression
+        // Relaxed smile
+        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
         glutSolidTorus(0.005f, 0.02f, 8, 16);
     }
     glPopMatrix();
+    glPopMatrix();
 
-    // Add neck muscles when turning
-    glColor3f(0.8f, 0.65f, 0.55f);
+    // Athletic Shirt
+    glMaterialfv(GL_FRONT, GL_AMBIENT, shirt_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, shirt_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, shirt_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shirt_shininess);
+
+    glColor3f(0.2f, 0.2f, 0.8f);
     glPushMatrix();
-    glTranslatef(0.0f, 0.35f, 0.0f);
-    // Left neck muscle
-    glPushMatrix();
-    glTranslatef(-0.04f, 0.0f, 0.0f);
-    glRotatef(15.0f, 0.0f, 0.0f, 1.0f);
-    glScalef(0.02f, 0.1f, 0.02f);
-    glutSolidCylinder(1.0, 1.0, 8, 8);
+    glTranslatef(0.0f, 1.1f, 0.0f);
+    // Form-fitting shirt
+    glScalef(0.25f, 0.4f, 0.2f);
+    glutSolidCube(1.0f);
     glPopMatrix();
-    // Right neck muscle
+
+    // Arms with archery animation
+    float archeryArmAngle = isPowerCharging ? 90.0f : 0.0f;
+    float bowArmAngle = isPowerCharging ? 90.0f : 0.0f;
+
+    // Bow arm (left)
     glPushMatrix();
-    glTranslatef(0.04f, 0.0f, 0.0f);
-    glRotatef(-15.0f, 0.0f, 0.0f, 1.0f);
-    glScalef(0.02f, 0.1f, 0.02f);
-    glutSolidCylinder(1.0, 1.0, 8, 8);
+    glTranslatef(-0.25f, 1.3f, 0.0f);
+    glRotatef(bowArmAngle, 1.0f, 0.0f, 0.0f);
+
+    // Upper arm
+    glColor3f(0.2f, 0.2f, 0.8f);
+    glPushMatrix();
+    glScalef(0.08f, 0.25f, 0.08f);
+    glutSolidCube(1.0f);
     glPopMatrix();
+
+    if (isPowerCharging) {
+        // Bow body
+        glColor3f(0.4f, 0.2f, 0.0f);
+        glPushMatrix();
+        glTranslatef(0.0f, -0.3f, 0.1f);
+
+        // Main bow curve
+        GLUquadricObj* quadObj = gluNewQuadric();
+        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        for (int i = -30; i <= 30; i++) {
+            glPushMatrix();
+            glRotatef(i * 2, 0.0f, 1.0f, 0.0f);
+            gluCylinder(quadObj, 0.02f, 0.02f, 0.02f, 8, 2);
+            glPopMatrix();
+        }
+
+        // Bowstring
+        glColor3f(0.8f, 0.8f, 0.8f);
+        glBegin(GL_LINES);
+        glVertex3f(0.0f, 0.3f, 0.0f);
+        glVertex3f(0.0f, -0.3f, 0.0f);
+        glEnd();
+
+        glPopMatrix();
+        gluDeleteQuadric(quadObj);
+    }
+    glPopMatrix();
+
+    // Drawing arm (right)
+    glPushMatrix();
+    glTranslatef(0.25f, 1.3f, 0.0f);
+    glRotatef(archeryArmAngle, 1.0f, 0.0f, 0.0f);
+
+    // Upper arm
+    glColor3f(0.2f, 0.2f, 0.8f);
+    glPushMatrix();
+    glScalef(0.08f, 0.25f, 0.08f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Draw arrow when charging
+    if (isPowerCharging) {
+        glColor3f(0.6f, 0.3f, 0.0f);
+        glPushMatrix();
+        glTranslatef(0.0f, -0.3f, 0.1f);
+        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+
+        // Arrow shaft
+        GLUquadricObj* quadObj = gluNewQuadric();
+        gluCylinder(quadObj, 0.01f, 0.01f, 0.4f, 8, 1);
+
+        // Arrow head
+        glTranslatef(0.0f, 0.0f, 0.4f);
+        glutSolidCone(0.02f, 0.05f, 8, 1);
+
+        // Arrow fletching
+        glTranslatef(0.0f, 0.0f, -0.4f);
+        for (int i = 0; i < 3; i++) {
+            glRotatef(120.0f, 0.0f, 0.0f, 1.0f);
+            glColor3f(1.0f, 0.0f, 0.0f);
+            glBegin(GL_TRIANGLES);
+            glVertex3f(0.0f, 0.0f, 0.0f);
+            glVertex3f(0.03f, 0.0f, 0.1f);
+            glVertex3f(0.0f, 0.0f, 0.1f);
+            glEnd();
+        }
+
+        gluDeleteQuadric(quadObj);
+        glPopMatrix();
+    }
+    glPopMatrix();
+
+
+    // Legs with animation
+    float legSwing = isMoving ? sin(legAnimation) * 20.0f : 0.0f;
+
+    // Pants color
+    glColor3f(0.2f, 0.2f, 0.2f);  // Dark pants
+
+    // Left leg
+    glPushMatrix();
+    glTranslatef(-0.1f, 0.7f, 0.0f);
+    glRotatef(legSwing, 1.0f, 0.0f, 0.0f);
+    glScalef(0.1f, 0.4f, 0.1f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Right leg
+    glPushMatrix();
+    glTranslatef(0.1f, 0.7f, 0.0f);
+    glRotatef(-legSwing, 1.0f, 0.0f, 0.0f);
+    glScalef(0.1f, 0.4f, 0.1f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Simple shoes
+    glColor3f(0.1f, 0.1f, 0.1f);
+    // Left shoe
+    glPushMatrix();
+    glTranslatef(-0.1f, 0.4f, 0.0f);
+    glScalef(0.12f, 0.1f, 0.2f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Right shoe
+    glPushMatrix();
+    glTranslatef(0.1f, 0.4f, 0.0f);
+    glScalef(0.12f, 0.1f, 0.2f);
+    glutSolidCube(1.0f);
     glPopMatrix();
 
     glPopMatrix();
 }
 
+//helper
 void drawDisk(float outerRadius, float height, int slices) {
     // Draw a solid disk using quads
     glBegin(GL_TRIANGLE_FAN);
@@ -647,6 +487,116 @@ void drawDisk(float outerRadius, float height, int slices) {
         glVertex3f(x, y, 0.0f);
     }
     glEnd();
+}
+
+void drawGoldCup() {
+    // Gold material properties
+    GLfloat gold_ambient[] = { 0.24725f, 0.1995f, 0.0745f, 1.0f };
+    GLfloat gold_diffuse[] = { 0.75164f, 0.60648f, 0.22648f, 1.0f };
+    GLfloat gold_specular[] = { 0.628281f, 0.555802f, 0.366065f, 1.0f };
+    GLfloat gold_shininess = 51.2f;
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, gold_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, gold_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, gold_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, gold_shininess);
+
+    glPushMatrix();
+
+    // Base of trophy
+    glPushMatrix();
+    glScalef(1.0f, 1.0f, 0.2f);
+    glutSolidCube(0.8f);
+    glPopMatrix();
+
+    // Second layer of base
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.2f);
+    glScalef(0.7f, 0.7f, 0.15f);
+    glutSolidCube(0.8f);
+    glPopMatrix();
+
+    // Stem
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 0.35f);
+    for (int i = 0; i < 20; i++) {
+        float scale = 0.2f - (i * 0.002f);
+        glTranslatef(0.0f, 0.0f, 0.05f);
+        glutSolidCube(scale);
+    }
+    glPopMatrix();
+
+    // Main cup body
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 1.4f);
+
+    // Bottom part of cup (inverted cone)
+    for (int i = 0; i < 15; i++) {
+        float scale = 0.2f + (i * 0.04f);
+        glTranslatef(0.0f, 0.0f, 0.05f);
+        glutSolidTorus(0.02f, scale, 16, 16);
+    }
+
+    // Top part of cup
+    glTranslatef(0.0f, 0.0f, 0.05f);
+    glutSolidTorus(0.04f, 0.8f, 20, 20);
+
+    // Lip of the cup
+    glTranslatef(0.0f, 0.0f, 0.1f);
+    glutSolidTorus(0.05f, 0.85f, 20, 20);
+    glPopMatrix();
+
+    // Handles
+    for (int side = -1; side <= 1; side += 2) {
+        glPushMatrix();
+        glTranslatef(side * 0.8f, 0.0f, 1.8f);
+
+        // Main handle curve
+        glPushMatrix();
+        glScalef(0.2f, 0.15f, 0.4f);
+        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+
+        // Draw handle using multiple toruses
+        for (int i = 0; i < 180; i += 30) {
+            glRotatef(30.0f, 1.0f, 0.0f, 0.0f);
+            glutSolidTorus(0.1f, 1.0f, 8, 16);
+        }
+        glPopMatrix();
+        glPopMatrix();
+    }
+
+    // Decorative bands
+    for (int i = 0; i < 3; i++) {
+        glPushMatrix();
+        glTranslatef(0.0f, 0.0f, 1.6f + (i * 0.2f));
+        for (int j = 0; j < 8; j++) {
+            glRotatef(45.0f, 0.0f, 0.0f, 1.0f);
+            glBegin(GL_TRIANGLES);
+            glVertex3f(0.0f, 0.0f, 0.0f);
+            glVertex3f(0.1f, 0.3f, 0.0f);
+            glVertex3f(-0.1f, 0.3f, 0.0f);
+            glEnd();
+        }
+        glPopMatrix();
+    }
+
+    // Top ornament
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, 2.3f);
+    glutSolidSphere(0.1f, 16, 16);
+
+    // Star on top
+    for (int i = 0; i < 8; i++) {
+        glRotatef(45.0f, 0.0f, 0.0f, 1.0f);
+        glBegin(GL_TRIANGLES);
+        glVertex3f(0.0f, 0.0f, 0.15f);  // Top point
+        glVertex3f(0.05f, 0.0f, 0.05f);  // Right point
+        glVertex3f(-0.05f, 0.0f, 0.05f); // Left point
+        glEnd();
+    }
+    glPopMatrix();
+
+    glPopMatrix();
 }
 
 void drawTarget() {
@@ -1257,8 +1207,19 @@ void drawBench() {
             1.0f + sin(animationAngles[1] * 3.14159 / 180.0f) * 0.2f);
     }
 
+    // Bench material (wooden)
+// Rich wooden material properties (mahogany-like finish)
+    GLfloat wood_ambient[] = { 0.4f, 0.2f, 0.07f, 1.0f };      // Darker brown ambient
+    GLfloat wood_diffuse[] = { 0.6f, 0.3f, 0.1f, 1.0f };       // Rich brown color
+    GLfloat wood_specular[] = { 0.05f, 0.05f, 0.05f, 1.0f };   // Very subtle shine
+    GLfloat wood_shininess = 5.0f;                             // Less shiny for wood
+
+    glColor3f(0.6f, 0.3f, 0.1f);                              // Base wood color
+    glMaterialfv(GL_FRONT, GL_AMBIENT, wood_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, wood_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, wood_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, wood_shininess);
     // Seat
-    glColor3f(0.6f, 0.4f, 0.2f);
     glPushMatrix();
     glScalef(2.0f, 0.2f, 1.0f);
     glutSolidCube(1.0f);
@@ -1287,6 +1248,31 @@ void drawBench() {
     glTranslatef(0.8f, -0.4f, -0.4f);
     glScalef(0.2f, 0.8f, 0.2f);
     glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // True gold material properties for the cup
+    GLfloat gold_ambient[] = { 0.33f, 0.22f, 0.03f, 1.0f };    // Rich gold ambient
+    GLfloat gold_diffuse[] = { 1.0f, 0.84f, 0.0f, 1.0f };      // Pure gold color
+    GLfloat gold_specular[] = { 1.0f, 0.94f, 0.23f, 1.0f };    // Bright gold shine
+    GLfloat gold_shininess = 128.0f;                           // Very shiny
+
+    glColor3f(1.0f, 0.84f, 0.0f);                             // Pure gold base color
+    glMaterialfv(GL_FRONT, GL_AMBIENT, gold_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, gold_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, gold_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, gold_shininess);
+
+    // Add the gold cup above the bench
+    glPushMatrix();
+    glTranslatef(0.0f, 0.1f, 0.0f);      // Lifted higher above the bench
+    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);  // Rotate to make it upright
+    glScalef(1.0f, 1.0f, 1.0f);          // Made significantly bigger
+
+    if (benchAnimation) {
+        glRotatef(animationAngles[1], 0.0f, 0.0f, 1.0f);
+    }
+
+    drawGoldCup();
     glPopMatrix();
 
     glPopMatrix();
@@ -1470,100 +1456,160 @@ void drawFlag() {
 void drawLight() {
     glPushMatrix();
     glTranslatef(-8.0f, 0.0f, -8.0f);
-
-    // Save the current lighting state
     glPushAttrib(GL_LIGHTING_BIT);
 
+    float currentRotation = lightAnimation ? animationAngles[3] : 0.0f;
+    glRotatef(currentRotation, 0.0f, 1.0f, 0.0f);
+
+    // Update light position with smooth animation
     if (lightAnimation) {
-        glRotatef(animationAngles[3], 0.0f, 1.0f, 0.0f);
-        // Update light position based on animation
-        light1_position[0] = -8.0f + sin(animationAngles[3] * M_PI / 180.0f);
-        light1_position[2] = -7.0f + cos(animationAngles[3] * M_PI / 180.0f);
+        light1_position[0] = -8.0f + 2.0f * sin(animationAngles[3] * M_PI / 180.0f);
+        light1_position[2] = -7.0f + 2.0f * cos(animationAngles[3] * M_PI / 180.0f);
     }
 
-    // Pole material properties
-    GLfloat pole_ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+    // Enhanced metal material for pole
+    GLfloat pole_ambient[] = { 0.25f, 0.25f, 0.25f, 1.0f };
     GLfloat pole_diffuse[] = { 0.4f, 0.4f, 0.4f, 1.0f };
-    GLfloat pole_specular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-    GLfloat pole_shininess = 30.0f;
+    GLfloat pole_specular[] = { 0.774597f, 0.774597f, 0.774597f, 1.0f };
+    GLfloat pole_shininess = 76.8f;
 
-    // Draw main pole
+    // Base of the pole
     glMaterialfv(GL_FRONT, GL_AMBIENT, pole_ambient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, pole_diffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, pole_specular);
     glMaterialf(GL_FRONT, GL_SHININESS, pole_shininess);
 
-    // Main pole
+    // Draw decorative base
     glPushMatrix();
     glColor3f(0.4f, 0.4f, 0.4f);
-    glScalef(0.3f, 8.0f, 0.3f);
+    glTranslatef(0.0f, 0.0f, 0.0f);
+
+    // Bottom plate
+    glPushMatrix();
+    glScalef(1.0f, 0.1f, 1.0f);
     glutSolidCube(1.0f);
     glPopMatrix();
 
-    // Light fixture
+    // Decorative rings at base
+    for (int i = 0; i < 3; i++) {
+        glPushMatrix();
+        glTranslatef(0.0f, 0.1f + i * 0.1f, 0.0f);
+        glutSolidTorus(0.05f, 0.4f - i * 0.1f, 16, 32);
+        glPopMatrix();
+    }
+    glPopMatrix();
+
+    // Main pole with segments
+    glPushMatrix();
+    glTranslatef(0.0f, 0.4f, 0.0f);
+    for (int i = 0; i < 8; i++) {
+        // Pole segment
+        glPushMatrix();
+        glTranslatef(0.0f, i * 1.0f, 0.0f);
+        glScalef(0.3f, 1.0f, 0.3f);
+        glutSolidCube(1.0f);
+        glPopMatrix();
+
+        // Decorative ring between segments
+        if (i < 7) {
+            glPushMatrix();
+            glTranslatef(0.0f, i * 1.0f + 0.5f, 0.0f);
+            glutSolidTorus(0.02f, 0.2f, 12, 24);
+            glPopMatrix();
+        }
+    }
+    glPopMatrix();
+
+    // Enhanced light fixture
     glPushMatrix();
     glTranslatef(0.0f, 8.0f, 1.0f);
     glRotatef(45.0f, 1.0f, 0.0f, 0.0f);
 
-    // Light housing material
-    GLfloat housing_ambient[] = { 0.1f, 0.1f, 0.1f, 1.0f };
-    GLfloat housing_diffuse[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-    GLfloat housing_specular[] = { 0.4f, 0.4f, 0.4f, 1.0f };
-    GLfloat housing_shininess = 20.0f;
+    // Light housing with improved materials
+    GLfloat housing_ambient[] = { 0.15f, 0.15f, 0.15f, 1.0f };
+    GLfloat housing_diffuse[] = { 0.3f, 0.3f, 0.3f, 1.0f };
+    GLfloat housing_specular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+    GLfloat housing_shininess = 50.0f;
 
     glMaterialfv(GL_FRONT, GL_AMBIENT, housing_ambient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, housing_diffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, housing_specular);
     glMaterialf(GL_FRONT, GL_SHININESS, housing_shininess);
 
-    // Light housing
-    glColor3f(0.2f, 0.2f, 0.2f);
+    // Main housing
+    glColor3f(0.3f, 0.3f, 0.3f);
     glPushMatrix();
     glScalef(1.0f, 0.5f, 1.5f);
     glutSolidCube(1.0f);
     glPopMatrix();
 
-    // Light bulb with emission
-    float intensity = (sin(animationAngles[3] * M_PI / 180.0f) + 1.0f) / 2.0f;
-    GLfloat bulb_ambient[] = { 0.3f * intensity, 0.3f * intensity, 0.2f * intensity, 1.0f };
-    GLfloat bulb_diffuse[] = { 1.0f * intensity, 0.95f * intensity, 0.8f * intensity, 1.0f };
-    GLfloat bulb_emission[] = { 0.8f * intensity, 0.8f * intensity, 0.6f * intensity, 1.0f };
+    // Decorative frame
+    glPushMatrix();
+    glTranslatef(0.0f, -0.25f, 0.0f);
+    glScalef(1.1f, 0.1f, 1.6f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Light bulb with dynamic emission
+    float time = animationAngles[3] * M_PI / 180.0f;
+    float flickerIntensity = 0.95f + 0.05f * sin(time * 10.0f);  // Fast subtle flicker
+    float baseIntensity = (sin(time) + 1.0f) / 2.0f;  // Slow intensity variation
+    float finalIntensity = baseIntensity * flickerIntensity;
+
+    GLfloat bulb_ambient[] = { 0.4f * finalIntensity, 0.4f * finalIntensity, 0.3f * finalIntensity, 1.0f };
+    GLfloat bulb_diffuse[] = { 1.0f * finalIntensity, 0.95f * finalIntensity, 0.8f * finalIntensity, 1.0f };
+    GLfloat bulb_specular[] = { 1.0f * finalIntensity, 1.0f * finalIntensity, 0.9f * finalIntensity, 1.0f };
+    GLfloat bulb_emission[] = { 0.8f * finalIntensity, 0.8f * finalIntensity, 0.6f * finalIntensity, 1.0f };
 
     glMaterialfv(GL_FRONT, GL_AMBIENT, bulb_ambient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, bulb_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, bulb_specular);
     glMaterialfv(GL_FRONT, GL_EMISSION, bulb_emission);
 
-    // Draw the bulb
+    // Enhanced bulb with glass effect
     glPushMatrix();
     glTranslatef(0.0f, -0.2f, 0.0f);
-    glutSolidSphere(0.3f, 20, 20);
+    glutSolidSphere(0.3f, 32, 32);
+
+    // Glare effect
+    glPushMatrix();
+    glScalef(1.1f, 1.1f, 1.1f);
+    glColor4f(1.0f, 1.0f, 0.8f, 0.3f);
+    glutSolidSphere(0.3f, 16, 16);
+    glPopMatrix();
     glPopMatrix();
 
     // Reset emission
     GLfloat no_emission[] = { 0.0f, 0.0f, 0.0f, 1.0f };
     glMaterialfv(GL_FRONT, GL_EMISSION, no_emission);
-
     glPopMatrix();
 
-    // Update the OpenGL light
+    // Enhanced light properties
     if (lightAnimation) {
-        // Modulate light intensity with animation
         GLfloat animated_diffuse[] = {
-            light1_diffuse[0] * intensity,
-            light1_diffuse[1] * intensity,
-            light1_diffuse[2] * intensity,
+            light1_diffuse[0] * finalIntensity,
+            light1_diffuse[1] * finalIntensity,
+            light1_diffuse[2] * finalIntensity,
+            1.0f
+        };
+        GLfloat animated_specular[] = {
+            light1_specular[0] * finalIntensity,
+            light1_specular[1] * finalIntensity,
+            light1_specular[2] * finalIntensity,
             1.0f
         };
         glLightfv(GL_LIGHT1, GL_DIFFUSE, animated_diffuse);
+        glLightfv(GL_LIGHT1, GL_SPECULAR, animated_specular);
     }
 
+    // Update light properties
     glLightfv(GL_LIGHT1, GL_POSITION, light1_position);
     glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, light1_direction);
     glLightf(GL_LIGHT1, GL_SPOT_CUTOFF, 45.0f);
     glLightf(GL_LIGHT1, GL_SPOT_EXPONENT, 2.0f);
     glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0f);
-    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.05f);
-    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.01f);
+    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.045f);
+    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.0075f);
 
     glPopAttrib();
     glPopMatrix();
@@ -1650,6 +1696,96 @@ void drawGameEndScreen() {
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
+}
+
+void drawAudienceMember(const AudienceMember& member, float animationTime) {
+    glPushMatrix();
+    float bobHeight = sin(animationTime * 2.0f + member.animationOffset) * 0.1f;
+    glTranslatef(member.x, member.baseY + bobHeight, member.z);
+    glRotatef(member.rotation, 0.0f, 1.0f, 0.0f);
+    glScalef(member.scale, member.scale, member.scale);
+
+    // Body colors based on variation
+    float bodyColors[5][3] = {
+        {0.8f, 0.2f, 0.2f},  // Red shirt
+        {0.2f, 0.2f, 0.8f},  // Blue shirt
+        {0.2f, 0.8f, 0.2f},  // Green shirt
+        {0.8f, 0.8f, 0.2f},  // Yellow shirt
+        {0.8f, 0.2f, 0.8f}   // Purple shirt
+    };
+
+    // Head
+    glColor3f(0.95f, 0.85f, 0.7f);
+    glPushMatrix();
+    glTranslatef(0.0f, 1.6f, 0.0f);
+    glutSolidSphere(0.15f, 8, 8);
+    glPopMatrix();
+
+    // Body
+    glColor3fv(bodyColors[member.colorVariation]);
+    glPushMatrix();
+    glTranslatef(0.0f, 1.1f, 0.0f);
+    glScalef(0.3f, 0.5f, 0.2f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Arms (animated waving)
+    float armWave = sin(animationTime * 3.0f + member.animationOffset) * 30.0f;
+
+    for (int side = -1; side <= 1; side += 2) {
+        glPushMatrix();
+        glTranslatef(side * 0.2f, 1.3f, 0.0f);
+        glRotatef(armWave * side, 1.0f, 0.0f, 0.0f);
+
+        glColor3fv(bodyColors[member.colorVariation]);
+        glPushMatrix();
+        glScalef(0.1f, 0.4f, 0.1f);
+        glutSolidCube(1.0f);
+        glPopMatrix();
+
+        // Hands
+        glColor3f(0.95f, 0.85f, 0.7f);
+        glPushMatrix();
+        glTranslatef(0.0f, -0.25f, 0.0f);
+        glutSolidSphere(0.06f, 8, 8);
+        glPopMatrix();
+
+        glPopMatrix();
+    }
+
+    // Legs
+    glColor3f(0.2f, 0.2f, 0.2f);  // Dark pants
+    for (int side = -1; side <= 1; side += 2) {
+        glPushMatrix();
+        glTranslatef(side * 0.1f, 0.5f, 0.0f);
+        glScalef(0.1f, 0.6f, 0.1f);
+        glutSolidCube(1.0f);
+        glPopMatrix();
+    }
+
+    glPopMatrix();
+}
+
+void drawAudience() {
+    static float lastTime = 0;
+    float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+
+    // Enable alpha blending for crowd depth effect
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    for (const auto& member : audience) {
+        // Calculate distance-based alpha for crowd depth effect
+        float distanceToCamera = sqrt(
+            pow(member.x - cameraX, 2) +
+            pow(member.z - cameraZ, 2)
+        );
+
+        // Draw the audience member with animation
+        drawAudienceMember(member, currentTime);
+    }
+
+    glDisable(GL_BLEND);
 }
 
 void drawText(float x, float y, std::string text) {
@@ -1806,22 +1942,61 @@ void init() {
     glLightfv(GL_LIGHT0, GL_DIFFUSE, main_light_diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, main_light_specular);
 
-    // Street lamp light settings (warm light)
-    GLfloat street_light_ambient[] = { 0.1f, 0.1f, 0.05f, 1.0f };
-    GLfloat street_light_diffuse[] = { 1.0f, 0.95f, 0.8f, 1.0f };    // Warm color
-    GLfloat street_light_specular[] = { 0.5f, 0.5f, 0.4f, 1.0f };
+    //// Street lamp light settings (warm light)
+    //GLfloat street_light_ambient[] = { 0.1f, 0.1f, 0.05f, 1.0f };
+    //GLfloat street_light_diffuse[] = { 1.0f, 0.95f, 0.8f, 1.0f };    // Warm color
+    //GLfloat street_light_specular[] = { 0.5f, 0.5f, 0.4f, 1.0f };
 
-    glLightfv(GL_LIGHT1, GL_AMBIENT, street_light_ambient);
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, street_light_diffuse);
-    glLightfv(GL_LIGHT1, GL_SPECULAR, street_light_specular);
+    //glLightfv(GL_LIGHT1, GL_AMBIENT, street_light_ambient);
+    //glLightfv(GL_LIGHT1, GL_DIFFUSE, street_light_diffuse);
+    //glLightfv(GL_LIGHT1, GL_SPECULAR, street_light_specular);
 
     // Set up material properties
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    //glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
     glEnable(GL_COLOR_MATERIAL);
-
+    initAudience();
     // Enable smooth shading
     glShadeModel(GL_SMOOTH);
 
+}
+
+void initAudience() {
+    audience.clear();
+    float fenceBoundary = 9.5f;
+    float spacing = 1.0f;
+
+    // Create audience around the perimeter
+    for (int i = 0; i < NUM_AUDIENCE; i++) {
+        AudienceMember member;
+        member.animationOffset = (float)rand() / RAND_MAX * 360.0f;
+        member.scale = 0.8f + ((float)rand() / RAND_MAX * 0.4f);
+        member.rotation = (float)(rand() % 360);
+        member.colorVariation = rand() % 5;
+        member.baseY = 0.0f;
+
+        // Randomly position around the fence
+        float side = rand() % 4;
+        float offset = -9.0f + (float)(rand() % 180) / 10.0f;
+
+        if (side == 0) {      // North side
+            member.x = offset;
+            member.z = -11.0f - (float)(rand() % 30) / 10.0f;
+        }
+        else if (side == 1) { // South side
+            member.x = offset;
+            member.z = 11.0f + (float)(rand() % 30) / 10.0f;
+        }
+        else if (side == 2) { // East side
+            member.x = 11.0f + (float)(rand() % 30) / 10.0f;
+            member.z = offset;
+        }
+        else {              // West side
+            member.x = -11.0f - (float)(rand() % 30) / 10.0f;
+            member.z = offset;
+        }
+
+        audience.push_back(member);
+    }
 }
 
 void display() {
@@ -1843,10 +2018,12 @@ void display() {
             gluLookAt(0.0f, 5.0f, 20.0f, 0.0f, 5.0f, 0.0f, 0.0f, 1.0f, 0.0f);
             break;
         default: // Free camera
-            float lookAtX = cameraX + sin(cameraRotationY * M_PI / 180.0f);
-            float lookAtZ = cameraZ - cos(cameraRotationY * M_PI / 180.0f);
+            float lookAtX = cameraX + cos(pitch * M_PI / 180.0f) * sin(yaw * M_PI / 180.0f);
+            float lookAtY = cameraY + sin(pitch * M_PI / 180.0f);
+            float lookAtZ = cameraZ - cos(pitch * M_PI / 180.0f) * cos(yaw * M_PI / 180.0f);
+
             gluLookAt(cameraX, cameraY, cameraZ,          // Camera position
-                lookAtX, cameraY, lookAtZ,          // Look-at point
+                lookAtX, lookAtY, lookAtZ,          // Look-at point
                 0.0f, 1.0f, 0.0f);                 // Up vector
             break;
         }
@@ -1856,12 +2033,14 @@ void display() {
         glLightfv(GL_LIGHT0, GL_POSITION, light_position);
         drawGround();
         drawWalls();
+        drawAudience();
         drawPlayer();
         if (!gameWon) {
             drawTarget();
         }
         drawTree();
         drawBench();
+        //drawGoldCup();
         drawFlag();
         drawLight();
         drawBanner();
@@ -1944,26 +2123,46 @@ void keyboard(unsigned char key, int x, int y) {
     float oldZ = playerZ;
 	isMoving = false;
 
+    // Calculate movement direction based on camera rotation
+    float forwardX = sin(yaw * M_PI / 180.0f);
+    float forwardZ = -cos(yaw * M_PI / 180.0f);
+    float rightX = sin((yaw + 90.0f) * M_PI / 180.0f);
+    float rightZ = -cos((yaw + 90.0f) * M_PI / 180.0f);
+
     switch (key) {
     case 'w':
         playerZ -= moveSpeed;
         playerRotation = 0.0f;  // Looking forward
         isMoving = true;
+        cameraX += forwardX * moveSpeed;
+        cameraZ += forwardZ * moveSpeed;
         break;
     case 's':
         playerZ += moveSpeed;
         playerRotation = 180.0f;  // Looking backward
         isMoving = true;
+        cameraX -= forwardX * moveSpeed;
+        cameraZ -= forwardZ * moveSpeed;
         break;
     case 'a':
         playerX -= moveSpeed;
         playerRotation = 270.0f;  // Looking left
         isMoving = true;
+        cameraX -= rightX * moveSpeed;
+        cameraZ -= rightZ * moveSpeed;
         break;
     case 'd':
         playerX += moveSpeed;
         playerRotation = 90.0f;  // Looking right
         isMoving = true;
+        cameraX += rightX * moveSpeed;
+        cameraZ += rightZ * moveSpeed;
+        break;
+    case 'q': // Move up
+        cameraY += moveSpeed;
+        break;
+    case 'e': // Move down
+        cameraY -= moveSpeed;
         break;
     case ' ': // Space bar to start charging shot
         if (!isPowerCharging) {
@@ -1974,15 +2173,15 @@ void keyboard(unsigned char key, int x, int y) {
             playSound("sounds/shoot", false);
         }
         break;
-    case '1': cameraView = 1; break;
-    case '2': cameraView = 2; break;
-    case '3': cameraView = 3; break;
-    case '0': cameraView = 0; break;
-    case 't': treeAnimation = !treeAnimation; break;
-    case 'b': benchAnimation = !benchAnimation; break;
-    case 'f': flagAnimation = !flagAnimation; break;
-    case 'l': lightAnimation = !lightAnimation; break;
-    case 'n': bannerAnimation = !bannerAnimation; break;
+    case '2': cameraView = 1; break;
+    case '3': cameraView = 2; break;
+    case '4': cameraView = 3; break;
+    case '1': cameraView = 0; break;
+    case 'z': treeAnimation = !treeAnimation; break;
+    case 'x': benchAnimation = !benchAnimation; break;
+    case 'c': flagAnimation = !flagAnimation; break;
+    case 'v': lightAnimation = !lightAnimation; break;
+    case 'b': bannerAnimation = !bannerAnimation; break;
     case 27: exit(0); break;
     }
 
@@ -2076,6 +2275,51 @@ void keyboardUp(unsigned char key, int x, int y) {
 	}
 }
 
+void mouse(int button, int state, int x, int y) {
+    if (cameraView == 0) { // Only in free camera mode
+        if (button == GLUT_LEFT_BUTTON) {
+            if (state == GLUT_DOWN) {
+                mouseRotating = true;
+                lastMouseX = x;
+                lastMouseY = y;
+            }
+            else if (state == GLUT_UP) {
+                mouseRotating = false;
+            }
+        }
+    }
+}
+
+void mouseMotion(int x, int y) {
+    if (mouseRotating && cameraView == 0) {
+        // Calculate change in mouse position
+        int deltaX = x - lastMouseX;
+        int deltaY = y - lastMouseY;
+
+        // Update camera rotation
+        yaw += deltaX * mouseSensitivity;
+        pitch -= deltaY * mouseSensitivity;  // Inverted for natural feel
+
+        // Limit pitch to prevent camera flipping
+        if (pitch > 89.0f) pitch = 89.0f;
+        if (pitch < -89.0f) pitch = -89.0f;
+
+        // Convert to radians for calculation
+        float yawRad = yaw * M_PI / 180.0f;
+        float pitchRad = pitch * M_PI / 180.0f;
+
+        // Calculate new look-at point
+        cameraRotationY = yaw;  // Store for other functions
+        cameraRotationX = pitch;
+
+        // Update last mouse position
+        lastMouseX = x;
+        lastMouseY = y;
+
+        glutPostRedisplay();
+    }
+}
+
 void timer(int value) {
     // Update wall colors
     //wallColorR = (float)rand() / RAND_MAX;
@@ -2120,8 +2364,11 @@ int main(int argc, char** argv) {
     glutKeyboardFunc(keyboard);
     glutKeyboardUpFunc(keyboardUp);
     glutSpecialFunc(specialKeys);
+    glutMouseFunc(mouse);
+    glutMotionFunc(mouseMotion);
     glutTimerFunc(1000, timer, 0);
-
+    yaw = -90.0f;  // Start looking along negative Z
+    pitch = 0.0f;
     // Enter the main loop
     glutMainLoop();
     return 0;
