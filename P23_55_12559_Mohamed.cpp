@@ -1793,50 +1793,6 @@ void drawAudience() {
     glDisable(GL_BLEND);
 }
 
-void drawOlympicRings() {
-    // Ring colors in Olympic order
-    float ringColors[5][3] = {
-        {0.0f, 0.0f, 0.8f},  // Blue
-        {0.0f, 0.0f, 0.0f},  // Black
-        {1.0f, 0.0f, 0.0f},  // Red
-        {1.0f, 0.8f, 0.0f},  // Yellow
-        {0.0f, 0.6f, 0.0f}   // Green
-    };
-
-    // Ring positions (interlocked pattern)
-    float positions[5][2] = {
-        {-2.2f, 0.0f},    // Blue ring
-        {0.0f, 0.0f},     // Black ring
-        {2.2f, 0.0f},     // Red ring
-        {-1.1f, -1.0f},   // Yellow ring
-        {1.1f, -1.0f}     // Green ring
-    };
-
-    GLUquadricObj* quadric = gluNewQuadric();
-    float ringThickness = 0.3f;
-    float ringRadius = 1.0f;
-
-    for (int i = 0; i < 5; i++) {
-        glPushMatrix();
-        glTranslatef(positions[i][0], positions[i][1], 0.0f);
-
-        // Set material properties for each ring
-        GLfloat ring_ambient[] = { ringColors[i][0] * 0.3f, ringColors[i][1] * 0.3f, ringColors[i][2] * 0.3f, 1.0f };
-        GLfloat ring_diffuse[] = { ringColors[i][0], ringColors[i][1], ringColors[i][2], 1.0f };
-        GLfloat ring_specular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-        GLfloat ring_shininess = 32.0f;
-
-        glMaterialfv(GL_FRONT, GL_AMBIENT, ring_ambient);
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, ring_diffuse);
-        glMaterialfv(GL_FRONT, GL_SPECULAR, ring_specular);
-        glMaterialf(GL_FRONT, GL_SHININESS, ring_shininess);
-
-        glutSolidTorus(ringThickness, ringRadius, 20, 30);
-        glPopMatrix();
-    }
-    gluDeleteQuadric(quadric);
-}
-
 void drawDigitalNumber(int number, float x, float y, float scale) {
     // Define segments for digital display (7-segment display)
     const bool segments[10][7] = {
@@ -1913,46 +1869,6 @@ void drawDigitalNumber(int number, float x, float y, float scale) {
             }
         }
         glPopMatrix();
-    }
-}
-
-void drawNumber(int num) {
-    // Simplified version for podium numbers
-    GLfloat number_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    GLfloat number_diffuse[] = { 0.1f, 0.1f, 0.1f, 1.0f };
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT, number_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, number_diffuse);
-
-    switch (num) {
-    case 1:
-        glBegin(GL_TRIANGLES);
-        glVertex3f(-0.1f, -0.2f, 0.0f);
-        glVertex3f(0.0f, 0.2f, 0.0f);
-        glVertex3f(0.1f, -0.2f, 0.0f);
-        glEnd();
-        break;
-
-    case 2:
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex3f(-0.15f, 0.2f, 0.0f);
-        glVertex3f(0.15f, 0.2f, 0.0f);
-        glVertex3f(0.15f, 0.0f, 0.0f);
-        glVertex3f(-0.15f, -0.2f, 0.0f);
-        glVertex3f(0.15f, -0.2f, 0.0f);
-        glEnd();
-        break;
-
-    case 3:
-        glBegin(GL_TRIANGLE_STRIP);
-        glVertex3f(-0.15f, 0.2f, 0.0f);
-        glVertex3f(0.15f, 0.2f, 0.0f);
-        glVertex3f(0.15f, 0.0f, 0.0f);
-        glVertex3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(0.15f, -0.2f, 0.0f);
-        glVertex3f(-0.15f, -0.2f, 0.0f);
-        glEnd();
-        break;
     }
 }
 
@@ -2059,21 +1975,83 @@ void drawOlympicTorchStand() {
     glPopMatrix();
 }
 
+void drawNumber(int num) {
+    // Simple number rendering using lines
+    switch (num) {
+    case 1:
+        glBegin(GL_LINES);
+        glVertex3f(0.0f, -0.5f, 0.0f);
+        glVertex3f(0.0f, 0.5f, 0.0f);
+        glEnd();
+        break;
+    case 2:
+        glBegin(GL_LINE_STRIP);
+        glVertex3f(-0.25f, 0.5f, 0.0f);
+        glVertex3f(0.25f, 0.5f, 0.0f);
+        glVertex3f(0.25f, 0.0f, 0.0f);
+        glVertex3f(-0.25f, 0.0f, 0.0f);
+        glVertex3f(-0.25f, -0.5f, 0.0f);
+        glVertex3f(0.25f, -0.5f, 0.0f);
+        glEnd();
+        break;
+    case 3:
+        glBegin(GL_LINE_STRIP);
+        glVertex3f(-0.25f, 0.5f, 0.0f);
+        glVertex3f(0.25f, 0.5f, 0.0f);
+        glVertex3f(0.25f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.25f, 0.0f, 0.0f);
+        glVertex3f(0.25f, -0.5f, 0.0f);
+        glVertex3f(-0.25f, -0.5f, 0.0f);
+        glEnd();
+        break;
+    }
+}
+
+void drawOlympicRings() {
+    float radius = 0.5;
+    float spacing = radius * 1.2;
+
+    // Blue Ring
+    glColor3f(0.0f, 0.129f, 0.878f);
+    glPushMatrix();
+    glTranslatef(-spacing, radius / 2, 0);
+    glutSolidTorus(0.05, radius, 20, 20);
+    glPopMatrix();
+
+    // Black Ring
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glPushMatrix();
+    glTranslatef(0, radius / 2, 0);
+    glutSolidTorus(0.05, radius, 20, 20);
+    glPopMatrix();
+
+    // Red Ring
+    glColor3f(0.898f, 0.0f, 0.0f);
+    glPushMatrix();
+    glTranslatef(spacing, radius / 2, 0);
+    glutSolidTorus(0.05, radius, 20, 20);
+    glPopMatrix();
+
+    // Yellow Ring
+    glColor3f(1.0f, 0.827f, 0.0f);
+    glPushMatrix();
+    glTranslatef(-spacing / 2, -radius / 2, 0);
+    glutSolidTorus(0.05, radius, 20, 20);
+    glPopMatrix();
+
+    // Green Ring
+    glColor3f(0.0f, 0.506f, 0.286f);
+    glPushMatrix();
+    glTranslatef(spacing / 2, -radius / 2, 0);
+    glutSolidTorus(0.05, radius, 20, 20);
+    glPopMatrix();
+}
+
 void drawOlympicPodium() {
     glPushMatrix();
-
-    // Material properties for marble
-    GLfloat marble_ambient[] = { 0.9f, 0.9f, 0.9f, 1.0f };
-    GLfloat marble_diffuse[] = { 0.9f, 0.9f, 0.9f, 1.0f };
-    GLfloat marble_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-    GLfloat marble_shininess = 100.0f;
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT, marble_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, marble_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, marble_specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, marble_shininess);
-
     // Base platform (Primitive 1)
+    glColor3f(0.8f, 0.8f, 0.8f); // Silver base
     glPushMatrix();
     glScalef(4.0f, 0.2f, 2.0f);
     glutSolidCube(1.0f);
@@ -2087,6 +2065,19 @@ void drawOlympicPodium() {
         glPushMatrix();
         glTranslatef(positions[i], heights[i] / 2 + 0.2f, 0.0f);
 
+        // Main block color based on position
+        switch (i) {
+        case 0: // Gold (center)
+            glColor3f(1.0f, 0.843f, 0.0f);
+            break;
+        case 1: // Silver (left)
+            glColor3f(0.753f, 0.753f, 0.753f);
+            break;
+        case 2: // Bronze (right)
+            glColor3f(0.804f, 0.498f, 0.196f);
+            break;
+        }
+
         // Main block (Primitives 2-4)
         glPushMatrix();
         glScalef(1.0f, heights[i], 1.0f);
@@ -2094,6 +2085,7 @@ void drawOlympicPodium() {
         glPopMatrix();
 
         // Decorative edges (Primitives 5-13)
+        glColor3f(0.9f, 0.9f, 0.9f); // White edges
         for (int j = 0; j < 4; j++) {
             glPushMatrix();
             glRotatef(90.0f * j, 0.0f, 1.0f, 0.0f);
@@ -2104,10 +2096,10 @@ void drawOlympicPodium() {
         }
 
         // Number display (Primitives 14-16)
+        glColor3f(0.1f, 0.1f, 0.1f); // Dark numbers
         glPushMatrix();
         glTranslatef(0.0f, heights[i] / 2 + 0.01f, 0.45f);
         glScalef(0.2f, 0.2f, 0.01f);
-        // Draw numbers (1, 2, 3)
         drawNumber(i + 1);
         glPopMatrix();
 
@@ -2120,23 +2112,11 @@ void drawOlympicPodium() {
 
         glPopMatrix();
     }
-
     glPopMatrix();
 }
 
 void drawOlympicScoreboard() {
     glPushMatrix();
-
-    // Material properties for metallic frame
-    GLfloat metal_ambient[] = { 0.25f, 0.25f, 0.25f, 1.0f };
-    GLfloat metal_diffuse[] = { 0.4f, 0.4f, 0.4f, 1.0f };
-    GLfloat metal_specular[] = { 0.774597f, 0.774597f, 0.774597f, 1.0f };
-    GLfloat metal_shininess = 76.8f;
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT, metal_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, metal_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, metal_specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, metal_shininess);
 
     // Main frame (Primitive 1)
     glPushMatrix();
@@ -2154,14 +2134,6 @@ void drawOlympicScoreboard() {
         glPopMatrix();
     }
 
-    // Digital display segments (Primitives 4-15)
-    GLfloat display_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    GLfloat display_diffuse[] = { 0.1f, 0.1f, 0.1f, 1.0f };
-    GLfloat display_emission[] = { 0.4f, 0.0f, 0.0f, 1.0f };  // Red glow
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT, display_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, display_diffuse);
-    glMaterialfv(GL_FRONT, GL_EMISSION, display_emission);
 
     // Score display
     drawDigitalNumber(targerHitCount, -1.0f, 0.5f, 0.5f);
@@ -2185,9 +2157,9 @@ void drawOlympicScoreboard() {
         glTranslatef(-1.8f + i * 0.5f, -1.0f, 0.15f);
 
         // LED color animation
-        float brightness = (sin(ledAnimation + i * 0.5f) + 1.0f) * 0.5f;
-        GLfloat led_emission[] = { brightness, brightness * 0.5f, 0.0f, 1.0f };
-        glMaterialfv(GL_FRONT, GL_EMISSION, led_emission);
+        //float brightness = (sin(ledAnimation + i * 0.5f) + 1.0f) * 0.5f;
+        //GLfloat led_emission[] = { brightness, brightness * 0.5f, 0.0f, 1.0f };
+        //glMaterialfv(GL_FRONT, GL_EMISSION, led_emission);
 
         glutSolidSphere(0.05f, 8, 8);
         glPopMatrix();
@@ -2204,17 +2176,42 @@ void drawText(float x, float y, std::string text) {
 }
 
 void checkCollisions() {
-    // Calculate distance between player and target
-    float dx = playerX - targetX;
-    float dz = playerZ - targetZ;
-    float distance = sqrt(dx * dx + dz * dz);
-
-
-    // Check collision with walls
+    // Wall collisions
     if (playerX < -9.5f) playerX = -9.5f;
     if (playerX > 9.5f) playerX = 9.5f;
     if (playerZ < -9.5f) playerZ = -9.5f;
     if (playerZ > 9.5f) playerZ = 9.5f;
+
+    // Bench collision (considering bench position at 5.0f, 0.5f, 5.0f)
+    float benchX = 5.0f;
+    float benchZ = 5.0f;
+    float benchWidth = 2.0f;  // Bench width (from scale factor)
+    float benchDepth = 1.0f;  // Bench depth (from scale factor)
+    float collisionMargin = 0.5f;  // Additional collision margin
+
+    // Calculate bounds of bench collision box
+    float benchMinX = benchX - (benchWidth / 2 + collisionMargin);
+    float benchMaxX = benchX + (benchWidth / 2 + collisionMargin);
+    float benchMinZ = benchZ - (benchDepth / 2 + collisionMargin);
+    float benchMaxZ = benchZ + (benchDepth / 2 + collisionMargin);
+
+    // Check if player is trying to enter bench area
+    if (playerX > benchMinX && playerX < benchMaxX &&
+        playerZ > benchMinZ && playerZ < benchMaxZ) {
+        // Push player back based on approach direction
+        if (playerX - benchX > playerZ - benchZ) {
+            playerX = benchMinX;
+        }
+        else if (benchX - playerX > playerZ - benchZ) {
+            playerX = benchMaxX;
+        }
+        else if (playerZ - benchZ > playerX - benchX) {
+            playerZ = benchMinZ;
+        }
+        else {
+            playerZ = benchMaxZ;
+        }
+    }
 }
 
 void updateLights() {
@@ -2302,7 +2299,7 @@ void updateArrows() {
             float dz = arrow.z - targetZ;
             float distance = sqrt(dx * dx + dy * dy + dz * dz);
 
-            if (distance < 1.0f ) {
+            if (distance < 1.0f) {
                 targetHit = true;
                 playSound("sounds/hit.wav", false);
                 targerHitCount++;
@@ -2359,7 +2356,7 @@ void init() {
     glLightfv(GL_LIGHT1, GL_DIFFUSE, street_light_diffuse);
     glLightfv(GL_LIGHT1, GL_SPECULAR, street_light_specular);
 
-     //Set up material properties
+    //Set up material properties
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
     glEnable(GL_COLOR_MATERIAL);
     initAudience();
@@ -2458,7 +2455,7 @@ void display() {
         glRotatef(180.0f, 0.0f, 1.0f, 0.0f); // Face it toward the playing field
         drawOlympicScoreboard();
         glPopMatrix();
-    
+
         drawPlayer();
         if (!gameWon) {
             drawTarget();
@@ -2494,7 +2491,7 @@ void display() {
         updateAnimations();
         updateArrows();
         updateLights();
-		updatePlayerAnimations();
+        updatePlayerAnimations();
         updateShootingAnimation();
         checkCollisions();
 
@@ -2546,7 +2543,7 @@ void keyboard(unsigned char key, int x, int y) {
     float moveSpeed = 0.1f;
     float oldX = playerX;
     float oldZ = playerZ;
-	isMoving = false;
+    isMoving = false;
 
     // Calculate movement direction based on camera rotation
     float forwardX = sin(yaw * M_PI / 180.0f);
@@ -2694,10 +2691,10 @@ void keyboardUp(unsigned char key, int x, int y) {
 
 
     }
-    
-	if (key == 'w' || key == 's' || key == 'a' || key == 'd') {
-	    isMoving = false;
-	}
+
+    if (key == 'w' || key == 's' || key == 'a' || key == 'd') {
+        isMoving = false;
+    }
 }
 
 void mouse(int button, int state, int x, int y) {
@@ -2764,7 +2761,7 @@ void timer(int value) {
         timeRemaining--;
         if (timeRemaining <= 0) {
             gameLost = true;
-			playSound("sounds/lose.wav", false);
+            playSound("sounds/lose.wav", false);
         }
     }
 
