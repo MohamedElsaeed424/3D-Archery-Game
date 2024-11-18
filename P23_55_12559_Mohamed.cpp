@@ -108,6 +108,12 @@ void drawLight();
 void drawBanner();
 void drawAudienceMember(const AudienceMember& member, float animationTime);
 void drawAudience();
+void drawOlympicRings();
+void drawDigitalNumber(int number, float x, float y, float scale);
+void drawNumber(int num);
+void drawOlympicTorchStand();
+void drawOlympicPodium();
+void drawOlympicScoreboard();
 void drawText(float x, float y, std::string text);
 void glutSolidCylinder(GLdouble radius, GLdouble height, GLint slices, GLint stacks);
 void checkCollisions();
@@ -474,7 +480,6 @@ void drawPlayer() {
 
     glPopMatrix();
 }
-
 //helper
 void drawDisk(float outerRadius, float height, int slices) {
     // Draw a solid disk using quads
@@ -1788,6 +1793,409 @@ void drawAudience() {
     glDisable(GL_BLEND);
 }
 
+void drawOlympicRings() {
+    // Ring colors in Olympic order
+    float ringColors[5][3] = {
+        {0.0f, 0.0f, 0.8f},  // Blue
+        {0.0f, 0.0f, 0.0f},  // Black
+        {1.0f, 0.0f, 0.0f},  // Red
+        {1.0f, 0.8f, 0.0f},  // Yellow
+        {0.0f, 0.6f, 0.0f}   // Green
+    };
+
+    // Ring positions (interlocked pattern)
+    float positions[5][2] = {
+        {-2.2f, 0.0f},    // Blue ring
+        {0.0f, 0.0f},     // Black ring
+        {2.2f, 0.0f},     // Red ring
+        {-1.1f, -1.0f},   // Yellow ring
+        {1.1f, -1.0f}     // Green ring
+    };
+
+    GLUquadricObj* quadric = gluNewQuadric();
+    float ringThickness = 0.3f;
+    float ringRadius = 1.0f;
+
+    for (int i = 0; i < 5; i++) {
+        glPushMatrix();
+        glTranslatef(positions[i][0], positions[i][1], 0.0f);
+
+        // Set material properties for each ring
+        GLfloat ring_ambient[] = { ringColors[i][0] * 0.3f, ringColors[i][1] * 0.3f, ringColors[i][2] * 0.3f, 1.0f };
+        GLfloat ring_diffuse[] = { ringColors[i][0], ringColors[i][1], ringColors[i][2], 1.0f };
+        GLfloat ring_specular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+        GLfloat ring_shininess = 32.0f;
+
+        glMaterialfv(GL_FRONT, GL_AMBIENT, ring_ambient);
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, ring_diffuse);
+        glMaterialfv(GL_FRONT, GL_SPECULAR, ring_specular);
+        glMaterialf(GL_FRONT, GL_SHININESS, ring_shininess);
+
+        glutSolidTorus(ringThickness, ringRadius, 20, 30);
+        glPopMatrix();
+    }
+    gluDeleteQuadric(quadric);
+}
+
+void drawDigitalNumber(int number, float x, float y, float scale) {
+    // Define segments for digital display (7-segment display)
+    const bool segments[10][7] = {
+        {1,1,1,1,1,1,0}, // 0
+        {0,1,1,0,0,0,0}, // 1
+        {1,1,0,1,1,0,1}, // 2
+        {1,1,1,1,0,0,1}, // 3
+        {0,1,1,0,0,1,1}, // 4
+        {1,0,1,1,0,1,1}, // 5
+        {1,0,1,1,1,1,1}, // 6
+        {1,1,1,0,0,0,0}, // 7
+        {1,1,1,1,1,1,1}, // 8
+        {1,1,1,1,0,1,1}  // 9
+    };
+
+    // Convert number to digits
+    int digits[10];
+    int numDigits = 0;
+    int tempNum = number;
+
+    do {
+        digits[numDigits++] = tempNum % 10;
+        tempNum /= 10;
+    } while (tempNum > 0);
+
+    // Draw each digit
+    for (int i = numDigits - 1; i >= 0; i--) {
+        float digitX = x + (numDigits - 1 - i) * scale * 1.5f;
+
+        glPushMatrix();
+        glTranslatef(digitX, y, 0.0f);
+        glScalef(scale, scale, scale);
+
+        // Draw segments based on digit
+        for (int seg = 0; seg < 7; seg++) {
+            if (segments[digits[i]][seg]) {
+                glPushMatrix();
+
+                // Position and rotate each segment
+                switch (seg) {
+                case 0: // Top horizontal
+                    glTranslatef(0.0f, 1.0f, 0.0f);
+                    break;
+                case 1: // Top right vertical
+                    glTranslatef(0.5f, 0.5f, 0.0f);
+                    glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+                    break;
+                case 2: // Bottom right vertical
+                    glTranslatef(0.5f, -0.5f, 0.0f);
+                    glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+                    break;
+                case 3: // Bottom horizontal
+                    glTranslatef(0.0f, -1.0f, 0.0f);
+                    break;
+                case 4: // Bottom left vertical
+                    glTranslatef(-0.5f, -0.5f, 0.0f);
+                    glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+                    break;
+                case 5: // Top left vertical
+                    glTranslatef(-0.5f, 0.5f, 0.0f);
+                    glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+                    break;
+                case 6: // Middle horizontal
+                    break;
+                }
+
+                // Draw segment
+                glPushMatrix();
+                glScalef(1.0f, 0.2f, 0.1f);
+                glutSolidCube(1.0f);
+                glPopMatrix();
+
+                glPopMatrix();
+            }
+        }
+        glPopMatrix();
+    }
+}
+
+void drawNumber(int num) {
+    // Simplified version for podium numbers
+    GLfloat number_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    GLfloat number_diffuse[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, number_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, number_diffuse);
+
+    switch (num) {
+    case 1:
+        glBegin(GL_TRIANGLES);
+        glVertex3f(-0.1f, -0.2f, 0.0f);
+        glVertex3f(0.0f, 0.2f, 0.0f);
+        glVertex3f(0.1f, -0.2f, 0.0f);
+        glEnd();
+        break;
+
+    case 2:
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex3f(-0.15f, 0.2f, 0.0f);
+        glVertex3f(0.15f, 0.2f, 0.0f);
+        glVertex3f(0.15f, 0.0f, 0.0f);
+        glVertex3f(-0.15f, -0.2f, 0.0f);
+        glVertex3f(0.15f, -0.2f, 0.0f);
+        glEnd();
+        break;
+
+    case 3:
+        glBegin(GL_TRIANGLE_STRIP);
+        glVertex3f(-0.15f, 0.2f, 0.0f);
+        glVertex3f(0.15f, 0.2f, 0.0f);
+        glVertex3f(0.15f, 0.0f, 0.0f);
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3f(0.15f, -0.2f, 0.0f);
+        glVertex3f(-0.15f, -0.2f, 0.0f);
+        glEnd();
+        break;
+    }
+}
+
+void drawOlympicTorchStand() {
+    glPushMatrix();
+
+    // Material properties for bronze
+    GLfloat bronze_ambient[] = { 0.2125f, 0.1275f, 0.054f, 1.0f };
+    GLfloat bronze_diffuse[] = { 0.714f, 0.4284f, 0.18144f, 1.0f };
+    GLfloat bronze_specular[] = { 0.393548f, 0.271906f, 0.166721f, 1.0f };
+    GLfloat bronze_shininess = 25.6f;
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, bronze_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, bronze_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, bronze_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, bronze_shininess);
+
+    // Base platform (Primitive 1)
+    glPushMatrix();
+    glScalef(2.0f, 0.2f, 2.0f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Decorative rings on base (Primitives 2-4)
+    for (int i = 0; i < 3; i++) {
+        glPushMatrix();
+        glTranslatef(0.0f, 0.2f + i * 0.1f, 0.0f);
+        glutSolidTorus(0.05f, 0.8f - i * 0.1f, 20, 20);
+        glPopMatrix();
+    }
+
+    // Main pillar (Primitive 5)
+    GLUquadricObj* quadric = gluNewQuadric();
+    glPushMatrix();
+    glTranslatef(0.0f, 0.5f, 0.0f);
+    gluCylinder(quadric, 0.3f, 0.2f, 2.0f, 16, 16);
+    glPopMatrix();
+
+    // Decorative rings on pillar (Primitives 6-10)
+    for (int i = 0; i < 5; i++) {
+        glPushMatrix();
+        glTranslatef(0.0f, 0.7f + i * 0.4f, 0.0f);
+        glutSolidTorus(0.05f, 0.35f - i * 0.02f, 16, 16);
+        glPopMatrix();
+    }
+
+    // Bowl support structure (Primitives 11-13)
+    glPushMatrix();
+    glTranslatef(0.0f, 2.5f, 0.0f);
+    for (int i = 0; i < 3; i++) {
+        glRotatef(120.0f * i, 0.0f, 1.0f, 0.0f);
+        glPushMatrix();
+        glRotatef(45.0f, 1.0f, 0.0f, 0.0f);
+        gluCylinder(quadric, 0.1f, 0.1f, 0.5f, 8, 8);
+        glPopMatrix();
+    }
+    glPopMatrix();
+
+    // Main bowl (Primitive 14)
+    glPushMatrix();
+    glTranslatef(0.0f, 2.7f, 0.0f);
+    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+    gluDisk(quadric, 0.0f, 0.8f, 20, 20);
+    glPopMatrix();
+
+    // Bowl sides (Primitive 15)
+    glPushMatrix();
+    glTranslatef(0.0f, 2.7f, 0.0f);
+    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+    gluCylinder(quadric, 0.8f, 1.0f, 0.3f, 20, 20);
+    glPopMatrix();
+
+    // Animated flame
+    static float flameAnimation = 0.0f;
+    flameAnimation += 0.1f;
+
+    // Draw multiple layers of flame (Primitives 16-20)
+    for (int i = 0; i < 5; i++) {
+        float phase = flameAnimation + i * 1.0f;
+        float scaleX = 0.8f + 0.2f * sin(phase);
+        float scaleY = 1.0f + 0.3f * cos(phase * 0.7f);
+
+        glPushMatrix();
+        glTranslatef(0.0f, 2.8f, 0.0f);
+        glRotatef(36.0f * i + phase * 10.0f, 0.0f, 1.0f, 0.0f);
+        glScalef(scaleX, scaleY, 1.0f);
+
+        // Gradient colors for flame
+        glBegin(GL_TRIANGLE_FAN);
+        glColor4f(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow center
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glColor4f(1.0f, 0.0f, 0.0f, 0.7f);  // Red edges
+        for (int j = 0; j <= 360; j += 20) {
+            float angle = j * M_PI / 180.0f;
+            float x = 0.4f * cos(angle);
+            float y = 0.8f + 0.4f * sin(angle);
+            glVertex3f(x, y, 0.0f);
+        }
+        glEnd();
+        glPopMatrix();
+    }
+
+    gluDeleteQuadric(quadric);
+    glPopMatrix();
+}
+
+void drawOlympicPodium() {
+    glPushMatrix();
+
+    // Material properties for marble
+    GLfloat marble_ambient[] = { 0.9f, 0.9f, 0.9f, 1.0f };
+    GLfloat marble_diffuse[] = { 0.9f, 0.9f, 0.9f, 1.0f };
+    GLfloat marble_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    GLfloat marble_shininess = 100.0f;
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, marble_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, marble_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, marble_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, marble_shininess);
+
+    // Base platform (Primitive 1)
+    glPushMatrix();
+    glScalef(4.0f, 0.2f, 2.0f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Three podium steps
+    float heights[] = { 0.6f, 0.8f, 0.4f };
+    float positions[] = { 0.0f, -1.2f, 1.2f };
+
+    for (int i = 0; i < 3; i++) {
+        glPushMatrix();
+        glTranslatef(positions[i], heights[i] / 2 + 0.2f, 0.0f);
+
+        // Main block (Primitives 2-4)
+        glPushMatrix();
+        glScalef(1.0f, heights[i], 1.0f);
+        glutSolidCube(1.0f);
+        glPopMatrix();
+
+        // Decorative edges (Primitives 5-13)
+        for (int j = 0; j < 4; j++) {
+            glPushMatrix();
+            glRotatef(90.0f * j, 0.0f, 1.0f, 0.0f);
+            glTranslatef(0.5f, -heights[i] / 2, 0.0f);
+            glScalef(0.1f, heights[i], 0.1f);
+            glutSolidCube(1.0f);
+            glPopMatrix();
+        }
+
+        // Number display (Primitives 14-16)
+        glPushMatrix();
+        glTranslatef(0.0f, heights[i] / 2 + 0.01f, 0.45f);
+        glScalef(0.2f, 0.2f, 0.01f);
+        // Draw numbers (1, 2, 3)
+        drawNumber(i + 1);
+        glPopMatrix();
+
+        // Olympic rings small decoration (Primitives 17-21)
+        glPushMatrix();
+        glTranslatef(0.0f, 0.0f, 0.48f);
+        glScalef(0.2f, 0.2f, 0.2f);
+        drawOlympicRings();
+        glPopMatrix();
+
+        glPopMatrix();
+    }
+
+    glPopMatrix();
+}
+
+void drawOlympicScoreboard() {
+    glPushMatrix();
+
+    // Material properties for metallic frame
+    GLfloat metal_ambient[] = { 0.25f, 0.25f, 0.25f, 1.0f };
+    GLfloat metal_diffuse[] = { 0.4f, 0.4f, 0.4f, 1.0f };
+    GLfloat metal_specular[] = { 0.774597f, 0.774597f, 0.774597f, 1.0f };
+    GLfloat metal_shininess = 76.8f;
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, metal_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, metal_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, metal_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, metal_shininess);
+
+    // Main frame (Primitive 1)
+    glPushMatrix();
+    glScalef(4.0f, 2.5f, 0.2f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Support legs (Primitives 2-3)
+    for (int i = -1; i <= 1; i += 2) {
+        glPushMatrix();
+        glTranslatef(i * 1.5f, -2.0f, 0.0f);
+        glRotatef(15.0f * i, 0.0f, 0.0f, 1.0f);
+        glScalef(0.2f, 2.0f, 0.2f);
+        glutSolidCube(1.0f);
+        glPopMatrix();
+    }
+
+    // Digital display segments (Primitives 4-15)
+    GLfloat display_ambient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    GLfloat display_diffuse[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+    GLfloat display_emission[] = { 0.4f, 0.0f, 0.0f, 1.0f };  // Red glow
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, display_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, display_diffuse);
+    glMaterialfv(GL_FRONT, GL_EMISSION, display_emission);
+
+    // Score display
+    drawDigitalNumber(targerHitCount, -1.0f, 0.5f, 0.5f);
+
+    // Timer display
+    drawDigitalNumber((int)timeRemaining, 1.0f, 0.5f, 0.5f);
+
+    // Olympic rings (Primitives 16-20)
+    glPushMatrix();
+    glTranslatef(0.0f, 1.0f, 0.15f);
+    glScalef(0.3f, 0.3f, 0.3f);
+    drawOlympicRings();
+    glPopMatrix();
+
+    // Animated elements (LED lights) (Primitives 21-28)
+    static float ledAnimation = 0.0f;
+    ledAnimation += 0.1f;
+
+    for (int i = 0; i < 8; i++) {
+        glPushMatrix();
+        glTranslatef(-1.8f + i * 0.5f, -1.0f, 0.15f);
+
+        // LED color animation
+        float brightness = (sin(ledAnimation + i * 0.5f) + 1.0f) * 0.5f;
+        GLfloat led_emission[] = { brightness, brightness * 0.5f, 0.0f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_EMISSION, led_emission);
+
+        glutSolidSphere(0.05f, 8, 8);
+        glPopMatrix();
+    }
+
+    glPopMatrix();
+}
+
 void drawText(float x, float y, std::string text) {
     glRasterPos2f(x, y);
     for (char c : text) {
@@ -1942,17 +2350,17 @@ void init() {
     glLightfv(GL_LIGHT0, GL_DIFFUSE, main_light_diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, main_light_specular);
 
-    //// Street lamp light settings (warm light)
-    //GLfloat street_light_ambient[] = { 0.1f, 0.1f, 0.05f, 1.0f };
-    //GLfloat street_light_diffuse[] = { 1.0f, 0.95f, 0.8f, 1.0f };    // Warm color
-    //GLfloat street_light_specular[] = { 0.5f, 0.5f, 0.4f, 1.0f };
+    // Street lamp light settings (warm light)
+    GLfloat street_light_ambient[] = { 0.1f, 0.1f, 0.05f, 1.0f };
+    GLfloat street_light_diffuse[] = { 1.0f, 0.95f, 0.8f, 1.0f };    // Warm color
+    GLfloat street_light_specular[] = { 0.5f, 0.5f, 0.4f, 1.0f };
 
-    //glLightfv(GL_LIGHT1, GL_AMBIENT, street_light_ambient);
-    //glLightfv(GL_LIGHT1, GL_DIFFUSE, street_light_diffuse);
-    //glLightfv(GL_LIGHT1, GL_SPECULAR, street_light_specular);
+    glLightfv(GL_LIGHT1, GL_AMBIENT, street_light_ambient);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, street_light_diffuse);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, street_light_specular);
 
-    // Set up material properties
-    //glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+     //Set up material properties
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
     glEnable(GL_COLOR_MATERIAL);
     initAudience();
     // Enable smooth shading
@@ -2034,6 +2442,23 @@ void display() {
         drawGround();
         drawWalls();
         drawAudience();
+        // Draw Olympic-themed objects
+        glPushMatrix();
+        glTranslatef(-15.0f, 0.0f, -15.0f);  // Position torch stand
+        drawOlympicTorchStand();
+        glPopMatrix();
+
+        glPushMatrix();
+        glTranslatef(15.0f, 0.0f, -15.0f);   // Position podium
+        drawOlympicPodium();
+        glPopMatrix();
+
+        glPushMatrix();
+        glTranslatef(0.0f, 8.0f, -18.0f);    // Position scoreboard
+        glRotatef(180.0f, 0.0f, 1.0f, 0.0f); // Face it toward the playing field
+        drawOlympicScoreboard();
+        glPopMatrix();
+    
         drawPlayer();
         if (!gameWon) {
             drawTarget();
